@@ -13,35 +13,24 @@ namespace JobApplication.Application.Services
         {
             _jobRepository = jobRepository;
         }
-        public async Task<Job?> GetJobByIdAsync(int id)
-        {
-            return await _jobRepository.GetJobByIdAsync(id);
-        } 
-        public async Task<Job> CreateJobAsync(Job job)
-        {
-           return await _jobRepository.CreateJobAsync(job);
+        //public async Task<Job?> GetJobByIdAsync(int id)
+        //{
+        //    return await _jobRepository.GetJobByIdAsync(id);
+        //} 
+        //public async Task<Job> CreateJobAsync(Job job)
+        //{
             
-        }
-        public async Task<Job> UpdateJobAsync(Job newJob)
-        {
-            return await _jobRepository.UpdateJobAsync(newJob);
-        }
-        public async Task<bool> DeleteJobAsync(int id)
-        {
-            return await _jobRepository.DeleteJobAsync(id);
-        }
-        public async Task<bool> CloseJobAsync(int id)
-        {
-            var job = await _jobRepository.GetJobByIdAsync(id);
-            if (job==null) { return false; }
-            else
-            {
-                job.IsActive = false;
-                job.ClosedAt = DateTime.Now;
-                job.ClosedBy = "Recriuter";
-            }
-            await _jobRepository.UpdateJobAsync(job);
-            return true;
-        }
+        //}
+        //public async Task<Job> UpdateJobAsync(Job newJob)
+        //{
+        //}
+        //public async Task<bool> DeleteJobAsync(int id)
+        //{
+        //    return await _jobRepository.DeleteJobAsync(id);
+        //}
+        //public async Task<bool> CloseJobAsync(int id)
+        //{
+            
+        //}
     }
 }
