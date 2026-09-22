@@ -1,10 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using MediatR;
 
-namespace JobApplication.Application.Features.Application.Commands.CancelApplication
+namespace JobApplication.Application.Features.Applications.Commands.CancelApplication
 {
-    public class CancelApplicationCommand
+    public class CancelApplicationCommand : IRequest<bool>
     {
+        public int Id { get; set; }
     }
 }

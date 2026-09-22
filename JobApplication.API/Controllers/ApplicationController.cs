@@ -1,5 +1,7 @@
-using JobApplication.Application.Services;
+using JobApplication.Application.Features.Applications.Commands.CancelApplication;
+using JobApplication.Application.Features.Applications.Commands.UpdateApplicationStatus;
 using JobApplication.Domain.Enums;
+using MediatR;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -13,11 +15,11 @@ namespace JobApplication.API.Controllers
     [Produces("application/json")]
     public class ApplicationController : ControllerBase
     {
-        private readonly ApplicationService _service;
+        private readonly IMediator _mediator;
 
-        public ApplicationController(ApplicationService service)
+        public ApplicationController(IMediator mediator)
         {
-            _service = service;
+            _mediator = mediator;
         }
 
         /// <summary>
@@ -32,25 +34,39 @@ namespace JobApplication.API.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> CancelApplicationAsync(int id)
         {
-            var app = await _service.CancelApplicationAsync(id);
-            if (app == false) return NotFound();
-            return Ok(app);
+            var result = await _mediator.Send(
+                new CancelApplicationCommand
+                {
+                    Id = id
+                });
+
+            if (!result)
+                return NotFound();
+
+            return Ok(result);
         }
 
         /// <summary>
-        /// Updates the status of an existing job application (e.g. Pending → Approved).
+        /// Updates the status of an existing job application.
         /// </summary>
         /// <param name="id">The unique identifier of the application to update.</param>
-        /// <param name="newStatus">The new status to assign to the application.</param>
-        /// <returns>No content on success.</returns>
+        /// <param name="newStatus">The new status to assign to the application.
+        /// </param>
         /// <response code="200">The application status was updated successfully.</response>
-        /// <response code="400">The status transition is invalid or the application was not found.</response>
+        /// <response code="400">The status transition is invalid.</response>
         [HttpPut("{id}/status")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<IActionResult> UpdateStatusAsync(int id, ApplicationStatus newStatus)
+        public async Task<IActionResult> UpdateStatusAsync(
+            int id,
+            ApplicationStatus newStatus)
         {
-            var result = await _service.UpdateStatusAsync(id, newStatus);
+            var result = await _mediator.Send(
+                new UpdateApplicationStatusCommand
+                {
+                    Id = id,
+                    NewStatus = newStatus
+                });
 
             if (!result)
                 return BadRequest();
