@@ -1,10 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using JobApplication.Domain.Enums;
+using MediatR;
 
-namespace JobApplication.Application.Features.Application.Commands.UpdateApplication
+namespace JobApplication.Application.Features.Applications.Commands.UpdateApplicationStatus
 {
-    public class UpdateApplicationCommand
+    public class UpdateApplicationStatusCommand : IRequest<bool>
     {
+        public int Id { get; set; }
+        public ApplicationStatus NewStatus { get; set; }
     }
 }

@@ -4,7 +4,6 @@ using JobApplication.Application.Interfaces;
 using System;
 using System.Collections.Generic;
 using System.Text;
-using JobApplication.Application.Services;
 using Microsoft.EntityFrameworkCore;
 
 namespace JobApplication.Infrastructure.Repositories
