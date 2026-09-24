@@ -1,0 +1,131 @@
+RESEARCH REPORT
+Recurring Jobs and Cron Expressions
+with Hangfire
+Applied to the WalletX Digital Wallet API
+Backend Development Bootcamp — Day 5
+Prepared: September 24, 2026
+
+Focus: RecurringJob.AddOrUpdate(), Cron expressions, Hangfire architecture, and a practical WalletX implementation.
+ 
+1. Task Objective
+The Day 5 take-home task has two parts. First, research recurring jobs: understand how RecurringJob.AddOrUpdate() works, understand Cron expressions, choose a real recurring task from the project, implement it, and verify it in the Hangfire Dashboard. Second, finish a small complete backend service that brings together the earlier course topics, including PRD/backlog work, Clean Architecture, CQRS/MediatR, API documentation, Git workflow, debugging, and Hangfire. 
+This report covers the recurring-job research and maps it directly to WalletX, the digital-wallet simulation used for the final project.
+2. Background Jobs: The Core Idea
+A background job is a unit of work that runs outside the normal HTTP request/response cycle. The user can receive a response while the deferred work continues separately. Day 5 gives examples such as sending notifications, generating large reports, processing uploaded media, and running scheduled work. 
+The reason for doing this is server capacity. If long-running work remains inside a request, a server thread can remain occupied for the entire operation. When enough requests do this at the same time, the application can experience thread-pool starvation and new requests can start timing out or failing.  
+Async/await is useful for I/O-bound waiting, such as database or network calls. It is not, by itself, a way to move CPU-heavy or long-running work outside the request. Day 5 therefore presents background jobs as the appropriate approach when work should be deferred. 
+3. Hangfire
+Hangfire is the concrete .NET tool used to implement background jobs. Day 5 describes it as the library that executes work outside the request/response cycle and recommends it for notifications, scheduled tasks, and heavy work, while discouraging it for operations whose result the user needs immediately. 
+Component	Role	WalletX mapping
+Client	Creates the job definition and writes it to storage.	A WalletX handler enqueues a transfer notification.
+Storage	Persists job and scheduling data.	SQL Server stores Hangfire data.
+Server	Runs in the background, polls storage, and executes due jobs.	Hangfire Server runs with the ASP.NET Core application.
+Day 5 explicitly frames the architecture as Client → Storage → Server and notes that the three parts can live together in the same ASP.NET Core application. 
+4. Recurring Jobs
+A recurring job is a scheduled background task that is executed repeatedly. Hangfire registers or updates the recurring definition with RecurringJob.AddOrUpdate(). A recurring job has a stable identifier, a method to execute, and a schedule. The schedule can be expressed using a Cron expression or Hangfire Cron helpers.
+RecurringJob.AddOrUpdate(
+    "walletx-daily-summary",
+    () => dailyTransactionSummaryJob.RunAsync(),
+    Cron.Daily);
+Using the same recurring-job identifier updates the existing definition instead of creating a second logical recurring job. This makes stable, unique identifiers important.
+5. Cron Expressions
+A Cron expression is a compact way to describe when a scheduled task should run. For standard Hangfire recurring schedules, the common form contains five fields: minute, hour, day of month, month, and day of week.
+Field	Position	Typical range	Meaning
+Minute	1	0–59	Minute of the hour
+Hour	2	0–23	Hour of the day
+Day of month	3	1–31	Calendar day
+Month	4	1–12	Month of year
+Day of week	5	0–7	Day of week
+Common symbols include * for any allowed value, */N for every N units, commas for selected values, and a dash for ranges.
+6. Cron Examples
+Expression	Schedule	Meaning
+* * * * *	Every minute	Any minute of every hour, day, and month.
+0 * * * *	Every hour	At minute 0 of every hour.
+0 0 * * *	Daily at 00:00	At midnight each day.
+0 2 * * *	Daily at 02:00	At 2:00 AM each day.
+0 0 1 * *	First day of each month	At midnight on day 1 of every month.
+For simple schedules, Hangfire also provides Cron helpers such as Cron.Daily, Cron.Weekly, Cron.Monthly, and Cron.Yearly. Cron expressions are useful when the schedule needs more specific timing.
+7. Why Recurring Jobs Belong in WalletX
+WalletX is a digital-wallet simulation with Users, Wallets, Transactions, Transfers, and Beneficiaries. The core financial operations—deposit, withdrawal, and transfer—should remain synchronous because the client needs their result immediately and balance changes must be atomic.
+The best recurring use case is therefore a task that is useful periodically but is not part of the immediate transfer transaction. The selected task is: Daily Transaction Summary.
+Every day
+   ↓
+Read the previous day's transactions
+   ↓
+Calculate totals / counts
+   ↓
+Log or persist the summary
+This demonstrates a genuine recurring job without making the core wallet transaction itself asynchronous or eventually consistent.
+8. One-Time Hangfire Job vs. Recurring Job
+Aspect	One-time job	Recurring job	WalletX example
+Registration	BackgroundJob.Enqueue(...)	RecurringJob.AddOrUpdate(...)	Transfer notification vs. daily summary
+Trigger	Created by an event/action	Created by a schedule	Successful transfer vs. daily schedule
+Execution pattern	Normally one execution per enqueue	Repeated according to schedule	Notify after transfer vs. run summary daily
+9. Suggested WalletX Implementation
+A clean implementation keeps the job logic in a dedicated class and registers the recurring definition during application startup. The handler or service then performs the actual summary work.
+public class DailyTransactionSummaryJob
+{
+    public async Task RunAsync()
+    {
+        // Read recent transactions
+        // Calculate summary values
+        // Log or persist the result
+    }
+}
+RecurringJob.AddOrUpdate(
+    "walletx-daily-summary",
+    () => dailyTransactionSummaryJob.RunAsync(),
+    Cron.Daily);
+The exact time can instead be represented by a Cron expression. For example, 0 2 * * * means 02:00 every day in the standard five-field Cron notation. When a specific local time is required, time-zone configuration should be considered so the schedule matches the intended business time.
+10. Background Notification in WalletX
+WalletX can also use a one-time background job after a successful transfer. This follows the same pattern demonstrated in Day 5 for application notifications: save successfully first, enqueue the notification, and return without waiting for the notification to finish. 
+TransferMoneyCommandHandler
+        ↓
+Update sender and receiver balances
+        ↓
+Save Transfer + Transactions
+        ↓
+Commit database transaction
+        ↓
+BackgroundJob.Enqueue(notification)
+        ↓
+Return API response
+A simulated notification service can use ILogger instead of a real email/SMS provider. This keeps the training project focused on architecture and background processing.
+11. Hangfire Dashboard and Verification
+Day 5 asks the learner to verify that the recurring job appears in the Hangfire Dashboard under Recurring Jobs. The Dashboard is also useful for debugging failed jobs because the failed-job entry exposes exception details and a stack trace. 
+1.	Run the WalletX ASP.NET Core application with Hangfire Server enabled.
+2.	Open the Dashboard, for example at /hangfire.
+3.	Open Recurring Jobs and verify that walletx-daily-summary is listed.
+4.	Trigger the recurring job manually for testing when appropriate.
+5.	Check the resulting execution and application logs.
+12. Practical Rules and Best Practices
+•	Use Hangfire when the work can be deferred; do not move an operation into the background when the user needs its result immediately. 
+•	Keep business logic in application services/handlers, not inside the Controller or job registration code.
+•	Use stable, unique recurring-job identifiers.
+•	Keep job payloads small; prefer stable IDs over large mutable objects when possible.
+•	Use logging and the Hangfire Dashboard to diagnose failed executions.
+•	Consider time zones when a recurring schedule depends on a specific local clock time.
+13. Mapping the Research to the Day 5 Deliverable
+Day 5 requirement	WalletX implementation
+Research Recurring Jobs	Explain RecurringJob.AddOrUpdate() and Cron expressions.
+Choose a real recurring task	Daily Transaction Summary.
+Implement and verify	Register the job and confirm it appears in Hangfire Dashboard → Recurring Jobs.
+Background notification	Queue a notification after successful transfer.
+Finish a complete backend service	WalletX combines Clean Architecture, CQRS/MediatR, EF Core, SQL Server, Swagger, Git workflow, debugging, and Hangfire. 
+14. Conclusion
+Recurring Jobs are a practical way to run scheduled work repeatedly without tying it to a user request. Hangfire provides the infrastructure for creating, storing, scheduling, processing, and monitoring these jobs. Cron expressions describe the schedule, while RecurringJob.AddOrUpdate() registers or updates the recurring definition.
+For WalletX, the Daily Transaction Summary is a clear recurring task because it has business value, runs independently of an immediate API response, and can be verified easily through the Hangfire Dashboard. Alongside the post-transfer notification job, it demonstrates both scheduled and event-triggered background processing in the same backend.
+15. References
+Course material: Backend Development Bootcamp — Day 5 (user-provided PPT).
+Hangfire Documentation — Performing Recurrent Tasks.
+https://docs.hangfire.io/en/latest/background-methods/performing-recurrent-tasks.html
+Hangfire Documentation — Calling Methods in Background.
+https://docs.hangfire.io/en/latest/background-methods/calling-methods-in-background.html
+Hangfire Documentation — Getting Started.
+https://docs.hangfire.io/en/latest/getting-started/
+Hangfire Documentation — Passing Arguments.
+https://docs.hangfire.io/en/latest/background-methods/passing-arguments.html
+HangfireIO Cronos — Cron format and examples.
+https://github.com/HangfireIO/Cronos
+Microsoft Learn — Background tasks with hosted services in ASP.NET Core.
+https://learn.microsoft.com/en-us/aspnet/core/fundamentals/host/hosted-services?view=aspnetcore-10.0
