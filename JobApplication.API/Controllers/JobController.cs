@@ -1,12 +1,12 @@
+using JobApplication.Application.Features.Jobs.Commands.CloseJob;
+using JobApplication.Application.Features.Jobs.Commands.CreateJob;
+using JobApplication.Application.Features.Jobs.Commands.DeleteJob;
+using JobApplication.Application.Features.Jobs.Commands.UpdateJob;
+using JobApplication.Application.Features.Jobs.Queries.GetJobById;
 using JobApplication.Domain.Entites;
+using MediatR;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using MediatR;
-using JobApplication.Application.Features.Jobs.Queries.GetJobById;
-using JobApplication.Application.Features.Jobs.Commands.CreateJob;
-using JobApplication.Application.Features.Jobs.Commands.UpdateJob;
-using JobApplication.Application.Features.Jobs.Commands.DeleteJob;
-using JobApplication.Application.Features.Jobs.Commands.CloseJob;
 
 namespace JobApplication.API.Controllers
 {
@@ -25,86 +25,63 @@ namespace JobApplication.API.Controllers
             _mediator = mediator;
         }
 
-        /// <summary>
-        /// Retrieves a single job posting by its unique identifier.
-        /// </summary>
+        /// <summary>Gets a job posting by its ID.</summary>
+        /// <param name="id">The job ID.</param>
         [HttpGet("{id}")]
         [ProducesResponseType(typeof(Job), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetJobByIdAsync(int id)
         {
             var job = await _mediator.Send(new GetJobByIdQurey() { Id = id });
-
-            if (job == null)
-                return NotFound();
-
+            if (job == null) return NotFound();
             return Ok(job);
         }
 
-        /// <summary>
-        /// Creates a new job posting.
-        /// </summary>
+        /// <summary>Creates a new job posting.</summary>
         [HttpPost]
         [ProducesResponseType(typeof(Job), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> CreateJobAsync(Job job)
         {
             var create = await _mediator.Send(new CreateJobCommand() { job = job });
-
             return Ok(create);
         }
 
-        /// <summary>
-        /// Updates an existing job posting.
-        /// </summary>
+        /// <summary>Updates an existing job posting.</summary>
+        /// <param name="id">The job ID.</param>
+        /// <param name="newJob">The updated job data.</param>
         [HttpPut("{id}")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(Job), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> UpdateJobAsync(Job newJob, int id)
         {
-            var job = await _mediator.Send(
-                new UpdateJobCommand() { id = id, newjob = newJob });
-
-            if (job == null)
-                return NotFound();
-
-            return Ok();
+            var updated = await _mediator.Send(new UpdateJobCommand() { id = id, newjob = newJob });
+            if (updated == null) return NotFound();
+            return Ok(updated);
         }
 
-        /// <summary>
-        /// Permanently deletes a job posting by its unique identifier.
-        /// </summary>
+        /// <summary>Deletes a job posting.</summary>
+        /// <param name="id">The job ID.</param>
         [HttpDelete("{id}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> DeleteJobAsync(int id)
         {
-            var delete = await _mediator.Send(
-                new DeleteJobCommand() { id = id });
-
-            if (delete == false)
-                return NotFound();
-
+            var delete = await _mediator.Send(new DeleteJobCommand() { id = id });
+            if (delete == false) return NotFound();
             return Ok();
         }
 
-        /// <summary>
-        /// Closes a job posting.
-        /// </summary>
+        /// <summary>Closes an active job posting.</summary>
+        /// <param name="id">The job ID.</param>
         [HttpPut("{id}/close")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> CloseJobAsync(int id)
         {
-            var job = await _mediator.Send(
-                new CloseJobCommand() { id = id });
-
-            if (job == false)
-                return NotFound();
-
+            var job = await _mediator.Send(new CloseJobCommand() { id = id });
+            if (job == false) return NotFound();
             return Ok();
         }
     }
-}
-
+}
